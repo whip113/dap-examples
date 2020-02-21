@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [ "$#" != "2" ];then
+    echo "Usage: $0 <var_file>
+    exit 1
+fi
+
 DEL_VAR_FILE=del_vars.txt
 DEL_POLICY_FILE=delete.yml
 
