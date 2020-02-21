@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-URL=master.example.local
-ACCT=dap-test
+URL=master.dap.bfloyd.machineidentity.io
+ACCT=dap-dev
 CUSER=admin
 CPASS="Cyberark1"
 

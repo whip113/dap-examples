@@ -9,7 +9,7 @@ POLICYBRANCH=root
 url="https://$URL/policies/$ACCT/policy/$POLICYBRANCH"
 curl -sk -H "$AUTH_TOKEN" \
   -X PUT \
-  -d $(< $POLICY_FILE ) \
+  -d "$(< $POLICY_FILE )" \
   $url > policy-load.out
 
 cat policy-load.out
