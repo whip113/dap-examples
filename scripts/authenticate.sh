@@ -23,5 +23,3 @@ token=$(echo -n $auth_result | base64 | tr -d '\r\n')
 
 AUTH_TOKEN="Authorization: Token token=\"$token\""
 
-echo "Authorization: Token token=\"$token\""
-

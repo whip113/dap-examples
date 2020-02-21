@@ -3,4 +3,4 @@
 . authenticate.sh 
 
 url="https://$URL/resources/$ACCT"
-curl -k -H "$AUTH_TOKEN" $url
+curl -s -k -H "$AUTH_TOKEN" $url
