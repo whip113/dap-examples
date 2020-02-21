@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-URL=master.dap.bfloyd.machineidentity.io
-ACCT=dap-dev
-CUSER=admin
-CPASS="Cyberark1"
+. config.sh
 
 # Login
 api_key=$(curl -sk --user $CUSER:$CPASS https://$URL/authn/$ACCT/login)
