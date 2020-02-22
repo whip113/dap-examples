@@ -9,7 +9,7 @@
 Script Name | Use
 ----------- | ---
 config.sh.tempalte | Rename this file to config.sh and edit to set your DAP instance configuration. See Setup step.
-Authenticate.sh | Load the config.sh file and then authenticates to the DAP api and retrieves an auth token. The authentication header is stored in $AUTH_TOKEN
+authenticate.sh | Load the config.sh file and then authenticates to the DAP api and retrieves an auth token. The authentication header is stored in $AUTH_TOKEN
 variables_delete.txt | Used in the variables_delete.sh script to delete variables. One variable path per line.
 variables_delete.sh | Script that deletes variables.
 variable_setvalue.sh | Set a variable value. Usage: `variable_setvalue.sh <path> <value>`
