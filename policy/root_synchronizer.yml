@@ -1,0 +1,14 @@
+#======================
+# Synchronizer Policy
+#======================
+- !group vault-dev-admins
+
+- !host Sync_HOST-NAME    # Can be obtained from 'conjur list -k host | grep Sync_'
+
+- !grant
+  role: !group vault-dev-admins
+  members: !host Sync_HOST-NAME
+
+- !policy
+  id: vault-dev
+  owner: !group vault-dev-admins
