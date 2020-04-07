@@ -1,0 +1,52 @@
+#======================
+# Synchronizer Policy
+#======================
+- !group 
+  id: vault-admins
+
+- !host
+  id: Sync_HOST-NAME    # Can be obtained from 'conjur list -k host | grep Sync_'
+
+- !grant
+  role: !group vault-admins
+  members: !host Sync_HOST-NAME
+
+- !policy
+  id: vault
+  owner: !group vault-admins
+  body:
+    - !group 
+      id: lobName-admins
+    
+    - !policy
+      id: lobName
+      owner: !group lobName-admins
+      body:
+        - !group
+          id: safeName-admins
+          
+        - !policy
+          id: safeName
+          owner: !group safeName-admins
+          body:
+            - !group
+              id: delegation/consumers
+              
+            - &vault-lobName-safeName-variables
+              - !variable
+                id: account-object-name1/username
+              - !variable
+                id: account-object-name1/password
+              - !variable
+                id: account-object-name2/username
+              - !variable
+                id: account-object-name2/password
+              - !variable
+                id: virtualUsername-1/username
+              - !variable
+                id: virtualUsername-2/password
+                
+            - !permit
+              role: !group delegation/consumers
+              privileges: [read, execute]
+              resources: *vault-lobName-safeName-variables
