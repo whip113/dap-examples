@@ -15,3 +15,4 @@ variables_delete.sh | Script that deletes variables.
 variable_setvalue.sh | Set a variable value. Usage: `variable_setvalue.sh <path> <value>`
 policy_replace.sh | Replace a policy branch. Usage: `policy_replace.sh <path> <policy_file>`
 resources_list.sh | Lists all resources. It may be good to pipe the output of this to 'jq'.
+resource_show.sh | resource_show.sh policy root 
