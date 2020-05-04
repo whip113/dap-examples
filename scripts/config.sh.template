@@ -1,4 +1,4 @@
 URL=dap-master.demo.local
-ACCT=dap-dev
+ACCT=$(curl -sk https://$URL/info | jq -r '.configuration.conjur.account')
 CUSER=admin
 CPASS="Cyberark1"
