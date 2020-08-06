@@ -1,0 +1,18 @@
+# bashrc for easy aliases
+function _dapaccount() { echo "$(curl -sk https://localhost/info | jq -r '.configuration.conjur.account')" }
+function _daprole() { echo "$(curl -sk https://localhost/info | jq -r '.configuration.conjur.role')" }
+function _dapauth_configured() { echo "$(curl -sk https://localhost/info | jq -r '.authenticators.configured | join(",")')" }
+function _dapauth_enabled() { echo "$(curl -sk https://localhost/info | jq -r '.authenticators.enabled | join(",")')" }
+
+alias dapaliases="alias | grep '^dap'"
+alias dapevoke="docker exec conjur-appliance evoke"
+alias daphealth="curl -k https://localhost/health"
+alias dapinfo="curl -k https://localhost/info"
+alias daplogs="docker logs conjur-appliance"
+alias daplogsf="docker logs conjur-appliance -f"
+alias dapexec="docker exec conjur-appliance"
+alias dapbash="docker exec -it conjur-appliance bash"
+alias dapaccount="_dapaccount"
+alias daprole="_daprole"
+alias dapauth_configured="_dapauth_configured"
+alias dapauth_enabled="_dapauth_enabled"
