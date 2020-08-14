@@ -1,18 +1,195 @@
-# bashrc for easy aliases
-function _dapaccount() { echo "$(curl -sk https://localhost/info | jq -r '.configuration.conjur.account')" }
-function _daprole() { echo "$(curl -sk https://localhost/info | jq -r '.configuration.conjur.role')" }
-function _dapauth_configured() { echo "$(curl -sk https://localhost/info | jq -r '.authenticators.configured | join(",")')" }
-function _dapauth_enabled() { echo "$(curl -sk https://localhost/info | jq -r '.authenticators.enabled | join(",")')" }
+# .bashrc
 
-alias dapaliases="alias | grep '^dap'"
-alias dapevoke="docker exec conjur-appliance evoke"
-alias daphealth="curl -k https://localhost/health"
-alias dapinfo="curl -k https://localhost/info"
-alias daplogs="docker logs conjur-appliance"
-alias daplogsf="docker logs conjur-appliance -f"
-alias dapexec="docker exec conjur-appliance"
-alias dapbash="docker exec -it conjur-appliance bash"
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+
+#START DAP convenience aliases
+function prompt_confirm() {
+  while true; do
+    read -r -n 1 -p "${1:-Continue?} [y/n]: " REPLY
+    case $REPLY in
+      [yY]) echo ; return 0 ;;
+      [nN]) echo ; return 1 ;;
+      *) printf " \033[31m %s \n\033[0m" "invalid input"
+    esac
+  done
+}
+function _dap_config_master() {
+	echo "==== "
+	echo "NOTICE: This shortcut may not reflect current guidance for configuring a master."
+	echo "        Please refer to the documentation to ensure the command is valid for "
+	echo "        the version of DAP being configured."
+	echo "==== "
+	prompt_confirm "Accept EULA" || return 1
+	while true; do
+		echo "Complexity Rules: 2 upper, 2 lower, 1 digit, 1 special, 12-128 length"
+		read -p "'admin' Password: " -s admin1; echo
+		read -p "Confirm Password: " -s confirm1; echo
+		if ! grep -qP '^(?=.*?[A-Z].*[A-Z])(?=.*?[a-z].*[a-z])(?=.*?[0-9])(?=.*[ !"#$%&'"'"'()*+,-.\/:;<=>?@\[\\\]^_`{|}~]).{12,128}$' <<<"$admin1"; then
+			prompt_confirm "Password did not meet complexity requirements. Try again?" || return
+			continue
+		fi
+		if [ "$admin1" == "$confirm1" ]; then
+			break
+		else
+			prompt_confirm "Password did not match. Try again?" || return
+			continue
+		fi
+	done
+	while true; do
+		read -i "$(hostname -f)" -p "Master hostname: " mhost; echo
+		prompt_confirm "Master hostname [$mhost] correct?" || continue
+		break
+	done
+	host_t="$(echo $mhost | awk -F. '{print $1}')"
+	fqdn="$(echo $mhost | sed "s/$host_t//g" | sed "s/^.//g")"
+	if [ "$fqdn" == "" ]; then fqdn="example.com";fi
+	while true; do
+		echo "Master alternative name FQDNs --"
+		echo "Single Master/3rd Party Certificates: leave this empty"
+	        echo "Self-signed master cluster: dapmasterlb.$fqdn,$mhost,master2.$fqdn,master3.$fqdn,..."
+	        read -p "> " maltnames; echo
+		[[ ! $maltnames =~ $mhost ]] && \
+			echo -e "WARNING: Master alt names must contain this hostname also!\n\tSuggestion: $maltnames,$mhost";
+		prompt_confirm "Master altnames [$maltnames] correct?" || continue
+		break
+	done
+	while true; do
+		read -p "Organization Account Name: " orgname; echo
+		prompt_confirm "Org account name [$orgname] correct?" || continue
+		break
+	done
+
+	echo "dapevoke configure master --accept-eula \\"
+	echo "  -h \"$mhost\" \\"
+	echo "  -p \"\$(base64 -d <<<\"$(echo $admin1 | base64)\")\" \\"
+	if [ "$maltnames" != "" ]; then
+	echo "  --master-altnames=\"$maltnames\" \\"
+	fi
+	echo "  $orgname"
+}
+function _dap_config_standby() {
+	local seed=$1
+	local test=$2
+	test -f "$seed" || { echo "Usage: dap_config_standby <path/to/seed_file.tar>"; return; }
+	filename="$(echo "$seed" | awk -F/ '{print $NF}')"
+	$test docker cp $seed dap:/tmp/
+	$test docker exec dap unpack seed /tmp/$filename
+	$test docker exec dap evoke configure standby
+}
+function _dap_config_follower() {
+	local seed=$1
+	local test=$2
+	test -f "$seed" || { echo "Usage: dap_config_follower <path/to/seed_file.tar>"; return; }
+	filename="$(echo "$seed" | awk -F/ '{print $NF}')"
+	$test docker cp $seed dap:/tmp/
+	$test docker exec dap unpack seed /tmp/$filename
+	$test docker exec dap evoke configure follower
+}
+function _daphealth() {
+	local sflag="" # Suppress curl stats if piping output to another command like jq
+	local hname="$(echo "$@" | sed 's/-s//g' | sed 's/ //g')"
+        if [ "$1" == "-s" ];then sflag="-s"; fi
+	if test -z "$hname"; then hname="localhost"; fi
+	url="https://$hname/health"
+	curl $sflag -k "$url"
+}
+function _dapinfo() {
+	local sflag="" # Suppress curl stats if piping output to another command like jq
+	local hname="$(echo "$@" | sed 's/-s//g' | sed 's/ //g')"
+        if [ "$1" == "-s" ];then sflag="-s"; fi
+	if test -z "$hname"; then hname="localhost"; fi
+	url="https://$hname/info"
+	curl $sflag -k "$url"
+}
+function _dapaccount() {
+	_dapinfo -s "$@" | jq -r '.configuration.conjur.account'
+}
+function _daprole() {
+	_dapinfo -s "$@" | jq -r '.configuration.conjur.role'
+}
+function _dapauth_configured() {
+	_dapinfo -s "$@" | jq -r '.authenticators.configured | join(",")'
+}
+function _dapauth_enabled() {
+	_dapinfo -s "$@" | jq -r '.authenticators.enabled | join(",")'
+}
+function _server_certificate() {
+	local hname=$1
+	local port=$2
+	test -z "$hname" && { echo "Usage: dapcert <hostname> [port=443]"; return; }
+	test -z "$port" && port="443"
+	echo -n | openssl s_client -connect $1:$port -servername $1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+}
+function _dap_evoke() {
+	local it=""
+	local eargs="$(echo "$@" | sed 's/^-it//g')"
+	if [ "$1" == "-it" ];then it="-it";fi
+	docker exec $it dap evoke $eargs
+}
+function _dap_exec() {
+	local it=""
+	local eargs="$(echo "$@" | sed 's/^-it//g')"
+	if [ "$1" == "-it" ];then it="-it";fi
+	docker exec $it dap $eargs
+}
+function _dap_display_aliases() {
+	echo "=============== DAP AMI Commands ================="
+	echo """
+	-------------------,-------------------
+	daphealth  [-s] [hostname],Displays health output of a node. Hostname defaults to localhost. -s flag silences curl stats.
+	dapinfo    [-s] [hostname],Displays info output of a node. Hostname defaults to localhost. -s flag silences curl stats.
+	dapaccount [-s] [hostname],Displays the organization account of the DAP instance running on host. Default hostname is localhost.
+	daprole    [-s] [hostname],Displays the role of the DAP instance running on the host. Default hostname is localhost.
+	daplogs    [--since=Nm],Display DAP container system logs. The --since=Nm flag shows the last N minutes (ex 5m).
+	daplogsf   [--since=Nm],Display and follow DAP container logs. The --since=Nm flag shows the last N minutes first (ex 5m).
+	dapcert    <host> <port>,Connect to host on port and retrieve SSL certificates.
+	dapauth_configured,Displays the configured authenticators of which the localhost DAP instance is aware.
+	dapauth_enabled,Displays the authenticators enabled on the DAP instance running on localhost.
+	-------------------,-------------------
+	dapevoke  [-it] <command>,Execute the evoke command in the DAP container. Use -it to run the command interactively.
+	dapexec   [-it] <command>,Use docker exec to execute commands in the DAP container. Use -it to run the command interactively.
+	dapbash,Start an interactive bash shell in the DAP container.
+	-------------------,-------------------
+	dap_config_master,Prompts for input required to configure a master. Outputs the command for copy/paste.
+	dap_config_standby  [echo],Configure a standby. ex: dap_config_standby ~/standby-seed.tar
+	dap_config_follower [echo],Configure a follower. ex: dap_config_follower ~/follower-seed.tar
+	**NOTE**,Config standby and follower aliases execute the commands unless the echo argument is provided.
+	""" | sed 's/\t//g' | column -s ',' -t -o'   - ' -N "Info Commands,Description" -W Description
+	echo "=============== DAP AMI Commands ================="
+	echo -e "\nEdit .bashrc to stop displaying this list."
+}
+
+alias daphealth="_daphealth"
+alias dapinfo="_dapinfo"
+alias dapcert="_server_certificate"
+
 alias dapaccount="_dapaccount"
 alias daprole="_daprole"
+
 alias dapauth_configured="_dapauth_configured"
 alias dapauth_enabled="_dapauth_enabled"
+
+alias daplogs="docker logs dap"
+alias daplogsf="docker logs dap -f"
+
+alias dapevoke="_dap_evoke"
+alias dapexec="_dap_exec"
+alias dapbash="dapexec -it bash"
+
+alias dap_config_master="_dap_config_master"
+alias dap_config_standby="_dap_config_standby"
+alias dap_config_follower="_dap_config_follower"
+
+alias dapaliases="_dap_display_aliases"
+
+_dap_display_aliases
+
+#END DAP convenience aliases
