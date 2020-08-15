@@ -126,7 +126,7 @@ function _server_certificate() {
 	local port=$2
 	test -z "$hname" && { echo "Usage: dapcert <hostname> [port=443]"; return; }
 	test -z "$port" && port="443"
-	echo -n | openssl s_client -connect $1:$port -servername $1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+	echo -n | openssl s_client -connect $hname:$port -servername $1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
 }
 function _dap_evoke() {
 	local it=""
